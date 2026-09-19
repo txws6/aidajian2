@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>和平精英 · 随机枪械生成器</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- 3D 背景 / 展示区 -->
+  <canvas id="gun-canvas"></canvas>
+
+  <!-- ADS 倍镜遮罩（开镜时显示：镜外黑色遮罩 + 圆孔 + 镜圈 + 十字线） -->
+  <div id="scope-mask" aria-hidden="true">
+    <div class="scope-ring"></div>
+    <div class="scope-line scope-line-h"></div>
+    <div class="scope-line scope-line-v"></div>
+    <div class="scope-dot"></div>
+  </div>
+
+  <!-- 顶部标题 -->
+  <header class="top-bar">
+    <div class="logo">
+      <div class="logo-badge">PUBG</div>
+      <div>
+        <h1>随机枪械生成器</h1>
+        <p>PEACE ELITE WEAPON ROULETTE · 3D 图鉴</p>
+      </div>
+    </div>
+    <div class="top-right">
+      <div class="search-wrap" id="search-wrap">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input id="search-input" type="text" placeholder="搜索枪械：M416 / AWM / 98K / 狙击…" maxlength="30" autocomplete="off" />
+        <div id="search-results" class="search-results"></div>
+      </div>
+      <div class="top-tips">拖拽旋转 · 滚轮缩放 · 空格键快速抽取</div>
+      <button id="btn-aim-mode" class="aim-mode-btn" title="打靶模式 (B)：左键射击 · R 换弹">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+        打靶模式
+      </button>
+    </div>
+  </header>
+
+  <!-- 打靶 HUD（body.aim-mode 时显示） -->
+  <div id="shooting-hud" aria-hidden="true">
+    <div id="crosshair"><i class="ch-t"></i><i class="ch-b"></i><i class="ch-l"></i><i class="ch-r"></i><i class="ch-dot"></i></div>
+    <div id="score-hud">得分 0 · 射击 0 · 最佳 --</div>
+    <div id="ammo-hud">-- / --</div>
+    <div id="reload-hud" hidden>换弹中…</div>
+    <div id="hit-floats"></div>
+  </div>
+
+  <!-- 左侧：信息面板 -->
+  <aside class="side-panel">
+    <!-- 类型筛选 -->
+    <div class="filter-box">
+      <div class="filter-label">抽取范围</div>
+      <div id="type-chips" class="chips"></div>
+    </div>
+
+    <!-- 随机按钮 -->
+    <button id="roll-btn" class="roll-btn">
+      <span class="roll-btn-main">随机抽取枪械</span>
+      <span class="roll-btn-sub">RANDOM DROP</span>
+    </button>
+
+    <!-- 枪械信息卡 -->
+    <div id="gun-card" class="gun-card">
+      <div class="gun-card-head">
+        <div class="gun-index" id="gun-index">NO.01</div>
+        <div class="rarity-badge normal" id="gun-rarity">地图刷新</div>
+      </div>
+      <div class="gun-name-row">
+        <h2 id="gun-name">M416</h2>
+        <span id="gun-en" class="gun-en">HK416</span>
+      </div>
+      <div class="gun-tags">
+        <span class="type-tag" id="gun-type">突击步枪</span>
+        <span class="ammo-tag" id="gun-ammo">5.56mm</span>
+        <span class="ammo-tag mag" id="gun-mag">30发</span>
+      </div>
+      <p class="gun-desc" id="gun-desc">—</p>
+
+      <div class="stats">
+        <div class="stat-row" id="stat-dmg">
+          <span class="stat-label">伤害</span>
+          <div class="bar"><div class="bar-fill"></div></div>
+          <span class="bar-num">0</span>
+        </div>
+        <div class="stat-row" id="stat-rate">
+          <span class="stat-label">射速</span>
+          <div class="bar"><div class="bar-fill"></div></div>
+          <span class="bar-num">0</span>
+        </div>
+        <div class="stat-row" id="stat-rng">
+          <span class="stat-label">射程</span>
+          <div class="bar"><div class="bar-fill"></div></div>
+          <span class="bar-num">0</span>
+        </div>
+        <div class="stat-row" id="stat-stb">
+          <span class="stat-label">稳定</span>
+          <div class="bar"><div class="bar-fill"></div></div>
+          <span class="bar-num">0</span>
+        </div>
+      </div>
+
+      <div class="attach">
+        <div class="section-label">推荐配件</div>
+        <div id="gun-attach" class="attach-list"></div>
+      </div>
+
+      <div class="detail">
+        <div class="section-label">枪械介绍</div>
+        <p id="gun-detail">—</p>
+      </div>
+    </div>
+
+    <!-- 历史记录 -->
+    <div class="history-box">
+      <div class="filter-label">本次战绩 · 点击回看</div>
+      <div id="history-list" class="history-list"></div>
+    </div>
+  </aside>
+
+  <!-- 右下角重置视角按钮（AI 助手由 ai.js 注入） -->
+  <button id="reset-view" class="reset-view-btn" title="重置视角">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/>
+    </svg>
+  </button>
+
+  <!-- three.js：本地优先，CDN 兜底 -->
+  <script src="lib/three.min.js"></script>
+  <script>
+    if (!window.THREE) document.write('<script src="https://cdn.bootcdn.net/ajax/libs/three.js/r128/three.min.js"><\/script>');
+    if (!window.THREE) document.write('<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"><\/script>');
+  </script>
+
+  <script src="js/guns.js"></script>
+  <script src="js/scene.js"></script>
+  <script src="js/shooting.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
